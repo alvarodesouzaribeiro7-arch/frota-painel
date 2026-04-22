@@ -92,7 +92,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 
 /* TABLE */
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto;margin-bottom:20px;}
-table{width:100%;border-collapse:collapse;min-width:1400px;}
+table{width:100%;border-collapse:collapse;min-width:1500px;}
 thead tr{background:var(--surface2);border-bottom:1px solid var(--border);}
 thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap;}
 thead th:hover{color:var(--text);}
@@ -213,9 +213,8 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
       <div class="field"><label>Modelo</label><input id="f-modelo" type="text" placeholder="ex: Randon SR BA"/></div>
       <div class="field"><label>Tipo</label>
         <select id="f-tipo">
-          <option value="vagao">Vagão</option>
+          <option value="furgao">Furgão</option>
           <option value="bitrem">Bitrem</option>
-          <option value="semireboque">Semirreboque</option>
           <option value="outro">Outro</option>
         </select>
       </div>
@@ -231,9 +230,9 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
       </div>
       <hr class="divider"/>
       <div class="field"><label>Última Preventiva Pesada (data)</label><input id="f-ult-pesada" type="date"/></div>
-      <div class="field"><label>KM na Última Pesada</label><input id="f-km-pesada" type="number" placeholder="ex: 0"/></div>
+      <div class="field"><label>KM na Última Pesada</label><input id="f-km-pesada" type="number" placeholder="ex: 45000"/></div>
       <div class="field"><label>Última Preventiva Leve (data)</label><input id="f-ult-leve" type="date"/></div>
-      <div class="field"><label>KM na Última Leve</label><input id="f-km-leve" type="number" placeholder="ex: 0"/></div>
+      <div class="field"><label>KM na Última Leve</label><input id="f-km-leve" type="number" placeholder="ex: 50000"/></div>
       <hr class="divider"/>
       <div class="field"><label>Baú</label>
         <select id="f-bau">
@@ -304,11 +303,12 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
           <th onclick="sortBy('modelo')">Modelo ⇅</th>
           <th>Tipo</th>
           <th onclick="sortBy('km')">KM Atual ⇅</th>
-          <th>Progresso Pesada</th>
           <th onclick="sortBy('ultPesada')">Últ. Pesada ⇅</th>
+          <th onclick="sortBy('diasPesada')">Vence Pesada ⇅</th>
           <th onclick="sortBy('ultLeve')">Últ. Leve ⇅</th>
+          <th onclick="sortBy('diasLeve')">Vence Leve ⇅</th>
           <th onclick="sortBy('status')">Status Prev. ⇅</th>
-          <th onclick="sortBy('dias')">Dias Bolsão ⇅</th>
+          <th onclick="sortBy('diasBolsao')">Dias Bolsão ⇅</th>
           <th onclick="sortBy('bau')">Baú ⇅</th>
           <th>Manutenção</th>
           <th>Observação / Problemas</th>
@@ -320,11 +320,11 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
   </div>
 
   <div class="legend">
-    <span>Progresso ciclo pesada (60.000 km):</span>
-    <span><span class="legend-dot" style="background:var(--verde)"></span> &lt;90% Em dia</span>
-    <span><span class="legend-dot" style="background:var(--amarelo)"></span> 90–100% A antecipar</span>
-    <span><span class="legend-dot" style="background:var(--vermelho)"></span> &gt;100% Vencida</span>
-    <span style="margin-left:8px;color:var(--text3)">Leve: ciclo 30.000 km · Pesada: ciclo 60.000 km</span>
+    <span>Vence Pesada / Leve — critério mais urgente (tempo ou KM):</span>
+    <span><span class="legend-dot" style="background:var(--verde)"></span> Em dia</span>
+    <span><span class="legend-dot" style="background:var(--amarelo)"></span> Atenção</span>
+    <span><span class="legend-dot" style="background:var(--vermelho)"></span> Vencida ou crítica</span>
+    <span style="margin-left:8px;color:var(--text3)">Pesada: 1 ano / 60.000 km · Leve: 6 meses / 30.000 km</span>
   </div>
 </div>
 
@@ -334,15 +334,14 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ===== FIREBASE CONFIG =====
-// ✅ SUAS CREDENCIAIS FIXAS — ninguém precisa configurar nada ao abrir o site
+// ✅ COLE SUAS CREDENCIAIS AQUI — ninguém precisa configurar nada ao abrir o site
 const HARDCODED_CONFIG = {
-  apiKey:            "AIzaSyBCVjH...",
+ apiKey:            "AIzaSyBCVjH...",
   authDomain:        "tragetta-5c119.firebaseapp.com",
   projectId:         "tragetta-5c119",
   storageBucket:     "tragetta-5c119.firebasestorage.app",
   messagingSenderId: "892426675968",
-  appId:             "1:892426675968:web:777a02ce64b280264135e5"
-};
+  appId:             "1:892426675968:web:777a02ce64b280264135e5"};
 
 // ===== STATE =====
 let frotas = [];
@@ -362,7 +361,6 @@ function setSyncStatus(status, text){
 }
 
 // ===== FIREBASE INIT =====
-
 async function initFirebase(config){
   try {
     const app = initializeApp(config);
@@ -438,57 +436,103 @@ async function batchSaveToFirebase(items){
 document.getElementById('currentDate').textContent = new Date().toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();
 
 // ===== CALCULA STATUS =====
+// Usa o critério que vencer primeiro: tempo OU KM
+// Pesada: 1 ano / 60.000 km  |  Leve: 6 meses / 30.000 km
 function calcStatus(f){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const km   = parseFloat(f.km) || 0;
+  const kmAtual = parseFloat(f.km) || 0;
 
-  // Por KM
-  let statusKM = null, pctKM = 0;
-  if(f.kmPesada !== '' && f.kmPesada !== null && f.kmPesada !== undefined){
-    const cicloKM = km - (parseFloat(f.kmPesada)||0);
-    pctKM = cicloKM / 60000;
-    if(pctKM > 1)      statusKM = 'vencida';
-    else if(pctKM>.9)  statusKM = 'antecipar';
-    else               statusKM = 'emdia';
-  }
-
-  // Por tempo pesada (1 ano)
-  let statusPesadaTempo = null, diasPesada = null;
+  // --- PESADA ---
+  // Por tempo (1 ano)
+  let diasPesadaTempo = null, statusPesadaTempo = null;
   if(f.ultPesada){
     const ult = new Date(f.ultPesada+'T00:00:00');
     const vence = new Date(ult); vence.setFullYear(vence.getFullYear()+1);
-    diasPesada = Math.floor((vence - hoje)/(1000*60*60*24));
-    if(diasPesada < 0)   statusPesadaTempo = 'vencida';
-    else if(diasPesada < 30)  statusPesadaTempo = 'urgente';
-    else if(diasPesada < 90)  statusPesadaTempo = 'alerta';
-    else                      statusPesadaTempo = 'emdia';
+    diasPesadaTempo = Math.floor((vence - hoje)/(1000*60*60*24));
+    if(diasPesadaTempo < 0)       statusPesadaTempo = 'vencida';
+    else if(diasPesadaTempo < 30) statusPesadaTempo = 'urgente';
+    else if(diasPesadaTempo < 90) statusPesadaTempo = 'alerta';
+    else                          statusPesadaTempo = 'emdia';
   }
 
-  // Por tempo leve (6 meses)
-  let statusLeveTempo = null, diasLeve = null;
+  // Por KM (60.000 km desde a última pesada)
+  let kmRestPesada = null, statusPesadaKM = null;
+  if(f.kmPesada !== '' && f.kmPesada !== null && f.kmPesada !== undefined && f.kmPesada !== '0' && kmAtual > 0){
+    const rodou = kmAtual - (parseFloat(f.kmPesada) || 0);
+    kmRestPesada = 60000 - rodou; // km restantes até próxima pesada
+    if(kmRestPesada <= 0)         statusPesadaKM = 'vencida';
+    else if(kmRestPesada < 5000)  statusPesadaKM = 'urgente';
+    else if(kmRestPesada < 15000) statusPesadaKM = 'alerta';
+    else                          statusPesadaKM = 'emdia';
+  }
+
+  // Pega o pior entre tempo e KM para pesada
+  const ordem = ['vencida','urgente','alerta','emdia','semdata'];
+  const pior = (...arr) => arr.filter(Boolean).sort((a,b)=>ordem.indexOf(a)-ordem.indexOf(b))[0] || null;
+  const statusPesada = pior(statusPesadaTempo, statusPesadaKM);
+
+  // Qual critério de pesada está mais crítico (para mostrar na coluna "Vence Pesada")
+  // Mostramos o valor mais urgente: menor dias OU menor km restante
+  let diasPesada = diasPesadaTempo; // padrão: mostra dias por tempo
+  let pesadaPorKM = false;
+  if(kmRestPesada !== null){
+    // Converte km restante em "equivalente de urgência" para comparar com dias
+    // Se km vence antes do tempo, mostra km
+    const urgenciaKM = statusPesadaKM ? ordem.indexOf(statusPesadaKM) : 99;
+    const urgenciaTempo = statusPesadaTempo ? ordem.indexOf(statusPesadaTempo) : 99;
+    if(urgenciaKM < urgenciaTempo || (urgenciaKM === urgenciaTempo && diasPesadaTempo !== null && kmRestPesada < diasPesadaTempo * 200)){
+      pesadaPorKM = true;
+    }
+  }
+
+  // --- LEVE ---
+  // Por tempo (6 meses)
+  let diasLeveTempo = null, statusLeveTempo = null;
   if(f.ultLeve){
     const ult2 = new Date(f.ultLeve+'T00:00:00');
     const vence2 = new Date(ult2); vence2.setMonth(vence2.getMonth()+6);
-    diasLeve = Math.floor((vence2 - hoje)/(1000*60*60*24));
-    if(diasLeve < 0)    statusLeveTempo = 'vencida';
-    else if(diasLeve < 30) statusLeveTempo = 'urgente';
-    else if(diasLeve < 90) statusLeveTempo = 'alerta';
-    else                   statusLeveTempo = 'emdia';
+    diasLeveTempo = Math.floor((vence2 - hoje)/(1000*60*60*24));
+    if(diasLeveTempo < 0)        statusLeveTempo = 'vencida';
+    else if(diasLeveTempo < 30)  statusLeveTempo = 'urgente';
+    else if(diasLeveTempo < 90)  statusLeveTempo = 'alerta';
+    else                         statusLeveTempo = 'emdia';
   }
 
-  // Status global: pior entre pesada (km e tempo) e leve (tempo)
-  const ordem = ['vencida','urgente','alerta','emdia','semdata'];
-  const pick = (...arr) => arr.filter(Boolean).sort((a,b)=>ordem.indexOf(a)-ordem.indexOf(b))[0] || 'semdata';
-  const status = pick(statusKM, statusPesadaTempo, statusLeveTempo);
+  // Por KM (30.000 km desde a última leve)
+  let kmRestLeve = null, statusLeveKM = null;
+  if(f.kmLeve !== '' && f.kmLeve !== null && f.kmLeve !== undefined && f.kmLeve !== '0' && kmAtual > 0){
+    const rodouL = kmAtual - (parseFloat(f.kmLeve) || 0);
+    kmRestLeve = 30000 - rodouL;
+    if(kmRestLeve <= 0)        statusLeveKM = 'vencida';
+    else if(kmRestLeve < 3000) statusLeveKM = 'urgente';
+    else if(kmRestLeve < 8000) statusLeveKM = 'alerta';
+    else                       statusLeveKM = 'emdia';
+  }
+
+  const statusLeve = pior(statusLeveTempo, statusLeveKM);
+
+  let diasLeve = diasLeveTempo;
+  let levePorKM = false;
+  if(kmRestLeve !== null){
+    const urgenciaKML = statusLeveKM ? ordem.indexOf(statusLeveKM) : 99;
+    const urgenciaTempoL = statusLeveTempo ? ordem.indexOf(statusLeveTempo) : 99;
+    if(urgenciaKML < urgenciaTempoL || (urgenciaKML === urgenciaTempoL && diasLeveTempo !== null && kmRestLeve < diasLeveTempo * 150)){
+      levePorKM = true;
+    }
+  }
+
+  // Status global: pior entre pesada e leve
+  const status = pior(statusPesada, statusLeve) || 'semdata';
 
   // Dias no bolsão
-  let diasBolsao = parseInt(f.dias) || 0;
+  let diasBolsao = 0;
   if(f.chegada){
     const ch = new Date(f.chegada+'T00:00:00');
     diasBolsao = Math.floor((hoje - ch)/(1000*60*60*24));
+    if(diasBolsao < 0) diasBolsao = 0;
   }
 
-  return { status, pctKM, diasPesada, diasLeve, diasBolsao };
+  return { status, diasPesada, diasLeve, kmRestPesada, kmRestLeve, pesadaPorKM, levePorKM, diasBolsao };
 }
 
 // ===== RENDER =====
@@ -523,22 +567,17 @@ window.render = function(){
   document.getElementById('kpi-vencida').textContent  = all.filter(f=>f.status==='vencida').length;
   document.getElementById('kpi-antecipar').textContent= all.filter(f=>f.status==='urgente'||f.status==='alerta').length;
   document.getElementById('kpi-emdia').textContent    = all.filter(f=>f.status==='emdia').length;
-  document.getElementById('kpi-corretiva').textContent= all.filter(f=>(f.manut||'').toLowerCase().includes('corretiva')).length;
+  document.getElementById('kpi-corretiva').textContent= all.filter(f=>(f.manut||'').includes('corretiva')).length;
   document.getElementById('kpi-bau').textContent      = all.filter(f=>f.bau==='vazio'||f.bau==='problema').length;
   document.getElementById('count-label').textContent  = `${lista.length} veículo${lista.length!==1?'s':''}`;
 
   const tbody = document.getElementById('tbody');
   if(!lista.length){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="13">Nenhum veículo encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="14">Nenhum veículo encontrado.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = lista.map(f => {
-    const pct = Math.min(f.pctKM*100, 150);
-    const progColor = pct>100?'var(--vermelho)':pct>90?'var(--amarelo)':'var(--verde)';
-    const progHTML = f.kmPesada!=='' && f.kmPesada!==null && f.kmPesada!==undefined
-      ? `<div class="prog-wrap"><div class="prog-pct">${Math.round(f.pctKM*100)}%</div><div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${progColor}"></div></div></div>`
-      : `<span style="color:var(--text3);font-size:12px;">sem KM</span>`;
 
     const statusMap = {
       vencida: ['s-vencida','❌ Vencida'],
@@ -560,24 +599,42 @@ window.render = function(){
     const bauBadge = `<span class="bau-badge ${bc}">${bt}</span>`;
 
     const tipoMap = {
-      vagao:       ['tipo-pesada','VAGÃO'],
-      bitrem:      ['tipo-leve','BITREM'],
-      semireboque: ['tipo-pesada','SEMI'],
-      outro:       ['tipo-corretiva','OUTRO'],
+      furgao:  ['tipo-leve','FURGÃO'],
+      bitrem:  ['tipo-pesada','BITREM'],
+      outro:   ['tipo-corretiva','OUTRO'],
     };
-    const [tc, tt] = tipoMap[f.tipo||'outro']||['tipo-corretiva','—'];
+    const [tc, tt] = tipoMap[f.tipo||'outro']||['tipo-corretiva','OUTRO'];
     const tipoBadge = `<span class="tipo-badge ${tc}">${tt}</span>`;
 
     const manutMap = {
       'preventiva-pesada': '🔴 Prev. Pesada',
       'preventiva-leve':   '🟡 Prev. Leve',
       'corretiva':         '🔧 Corretiva',
-      '':                  '—',
+      '': '—',
     };
     const manutTxt = manutMap[f.manut||''] ?? `🔧 ${f.manut}`;
 
+    // Dias/KM restantes pesada — mostra o critério mais urgente
+    function fmtVence(dias, kmRest, porKM){
+      if(dias === null && kmRest === null) return '<span style="color:var(--text3)">—</span>';
+      if(porKM && kmRest !== null){
+        const v = Math.round(kmRest);
+        const cor = v<=0?'var(--vermelho)':v<5000?'var(--vermelho)':v<15000?'var(--amarelo)':'var(--verde)';
+        return v<=0
+          ? `<span style="color:var(--vermelho);font-weight:700">${Math.abs(v).toLocaleString('pt-BR')} km atraso</span>`
+          : `<span style="color:${cor}">${v.toLocaleString('pt-BR')} km</span>`;
+      }
+      if(dias === null) return '<span style="color:var(--text3)">—</span>';
+      const cor = dias<0?'var(--vermelho)':dias<30?'var(--vermelho)':dias<90?'var(--amarelo)':'var(--verde)';
+      return dias < 0
+        ? `<span style="color:var(--vermelho);font-weight:700">${Math.abs(dias)}d atraso</span>`
+        : `<span style="color:${cor}">${dias}d</span>`;
+    }
+    const diasPesadaStr = fmtVence(f.diasPesada, f.kmRestPesada, f.pesadaPorKM);
+    const diasLeveStr   = fmtVence(f.diasLeve,   f.kmRestLeve,   f.levePorKM);
+
     const obsText = [f.obs, f.problemas].filter(Boolean).join(' · ') || '—';
-    const obsHtml = `<span style="font-size:12px;color:var(--text2);max-width:200px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${obsText.replace(/"/g,'&quot;')}">${obsText}</span>`;
+    const obsHtml = `<span style="font-size:12px;color:var(--text2);max-width:220px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${obsText.replace(/"/g,'&quot;')}">${esc(obsText)}</span>`;
 
     const uid = f.uid;
 
@@ -586,9 +643,10 @@ window.render = function(){
       <td>${esc(f.modelo||'—')}</td>
       <td>${tipoBadge}</td>
       <td><span style="font-family:'Space Mono',monospace">${f.km ? Number(f.km).toLocaleString('pt-BR') : '—'}</span></td>
-      <td>${progHTML}</td>
       <td style="font-size:12px;color:var(--text2)">${f.ultPesada ? fmtDate(f.ultPesada) : '—'}</td>
-      <td style="font-size:12px;color:var(--text2)">${f.ultLeve  ? fmtDate(f.ultLeve)  : '—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:12px;text-align:center">${diasPesadaStr}</td>
+      <td style="font-size:12px;color:var(--text2)">${f.ultLeve ? fmtDate(f.ultLeve) : '—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:12px;text-align:center">${diasLeveStr}</td>
       <td>${statusBadge}</td>
       <td><span style="font-family:'Space Mono',monospace;${f.diasBolsao>=10?'color:var(--amarelo)':''}">${f.diasBolsao}</span></td>
       <td>${bauBadge}</td>
@@ -625,12 +683,9 @@ window.sortBy = function(field){
 window.openModal = function(){
   editingId = null;
   document.getElementById('modal-title').textContent = '➕ Adicionar Veículo';
-  ['frota','modelo','km','obs','problemas'].forEach(id => document.getElementById('f-'+id).value='');
+  ['frota','modelo','km','km-pesada','km-leve','obs','problemas'].forEach(id => document.getElementById('f-'+id).value='');
   ['tipo','manut','bau'].forEach(id => document.getElementById('f-'+id).selectedIndex=0);
   ['chegada','ult-pesada','ult-leve'].forEach(id => document.getElementById('f-'+id).value='');
-  document.getElementById('f-km-pesada').value='';
-  document.getElementById('f-km-leve').value='';
-  document.getElementById('f-dias').value='';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -639,20 +694,19 @@ window.openEdit = function(uid){
   if(!f) return;
   editingId = uid;
   document.getElementById('modal-title').textContent = '✏️ Editar Veículo';
-  document.getElementById('f-frota').value    = f.frota||'';
-  document.getElementById('f-modelo').value   = f.modelo||'';
-  document.getElementById('f-tipo').value     = f.tipo||'outro';
-  document.getElementById('f-chegada').value  = f.chegada||'';
-  document.getElementById('f-km').value       = f.km||'';
-  document.getElementById('f-manut').value    = f.manut||'';
+  document.getElementById('f-frota').value      = f.frota||'';
+  document.getElementById('f-modelo').value     = f.modelo||'';
+  document.getElementById('f-tipo').value       = f.tipo||'furgao';
+  document.getElementById('f-chegada').value    = f.chegada||'';
+  document.getElementById('f-km').value         = f.km||'';
+  document.getElementById('f-manut').value      = f.manut||'';
   document.getElementById('f-ult-pesada').value = f.ultPesada||'';
-  document.getElementById('f-km-pesada').value  = f.kmPesada!==undefined&&f.kmPesada!==null ? f.kmPesada : '';
+  document.getElementById('f-km-pesada').value  = f.kmPesada||'';
   document.getElementById('f-ult-leve').value   = f.ultLeve||'';
-  document.getElementById('f-km-leve').value    = f.kmLeve!==undefined&&f.kmLeve!==null ? f.kmLeve : '';
-  document.getElementById('f-bau').value      = f.bau||'n/a';
-  document.getElementById('f-dias').value     = f.dias||'';
-  document.getElementById('f-obs').value      = f.obs||'';
-  document.getElementById('f-problemas').value= f.problemas||'';
+  document.getElementById('f-km-leve').value    = f.kmLeve||'';
+  document.getElementById('f-bau').value        = f.bau||'n/a';
+  document.getElementById('f-obs').value        = f.obs||'';
+  document.getElementById('f-problemas').value  = f.problemas||'';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -680,7 +734,6 @@ window.saveVehicle = async function(){
     ultLeve:   document.getElementById('f-ult-leve').value,
     kmLeve:    document.getElementById('f-km-leve').value,
     bau:       document.getElementById('f-bau').value,
-    dias:      document.getElementById('f-dias').value,
     obs:       document.getElementById('f-obs').value.trim(),
     problemas: document.getElementById('f-problemas').value.trim(),
   };
@@ -702,10 +755,10 @@ window.delVehicle = async function(uid){
 // ===== EXPORT CSV =====
 window.exportCSV = function(){
   if(!frotas.length){ showToast('warn','⚠️','Nenhum dado pra exportar!'); return; }
-  const cols = ['frota','modelo','tipo','chegada','km','manut','ultPesada','kmPesada','ultLeve','kmLeve','bau','obs','problemas'];
-  const header = ['FROTA','MODELO','TIPO','CHEGADA PATIO','KM ATUAL','MANUTENÇÃO','ULTIMA PESADA','KM PESADA','ULTIMA LEVE','KM LEVE','BAU','OBSERVAÇÃO','PROBLEMAS'];
-  const rows = frotas.map(f => cols.map(c => `"${(f[c]||'').toString().replace(/"/g,'""')}"`).join(','));
-  const csv = [header.join(','), ...rows].join('\n');
+  const cols =   ['frota','modelo','tipo','chegada','km','manut','ultPesada','kmPesada','ultLeve','kmLeve','bau','obs','problemas'];
+  const header = ['FROTA','MODELO','TIPO','CHEGADA PATIO','KM ATUAL','MANUTENÇÃO','ULTIMA PESADA','KM ULTIMA PESADA','ULTIMA LEVE','KM ULTIMA LEVE','BAU','OBSERVAÇÃO','PROBLEMAS'];
+  const rows = frotas.map(f => cols.map(c => `"${(f[c]||'').toString().replace(/"/g,'""')}"`).join(';'));
+  const csv = [header.join(';'), ...rows].join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
   a.download = `frota_${new Date().toISOString().slice(0,10)}.csv`;
@@ -720,136 +773,128 @@ window.handleCSV = async function(e){
   const r = new FileReader();
   r.onload = async ev => {
     try {
-      // Parse CSV respeitando campos entre aspas (que podem ter vírgulas dentro)
-      function parseCSVLine(line) {
-        const result = [];
-        let cur = '', inQ = false;
-        for(let i=0;i<line.length;i++){
-          const c = line[i];
+      // Remove BOM e divide linhas
+      let text = ev.target.result.replace(/^\uFEFF/,'');
+      // Detecta separador (ponto-e-vírgula ou vírgula)
+      const sep = text.split('\n')[0].includes(';') ? ';' : ',';
+
+      // Parser de CSV que respeita campos com quebra de linha entre aspas
+      function parseCSV(text, sep){
+        const rows = [];
+        let cur = [], field = '', inQ = false;
+        for(let i=0;i<text.length;i++){
+          const c = text[i];
           if(c==='"'){ inQ=!inQ; }
-          else if(c===','&&!inQ){ result.push(cur); cur=''; }
-          else { cur+=c; }
+          else if(c===sep && !inQ){ cur.push(field.trim()); field=''; }
+          else if((c==='\n'||c==='\r') && !inQ){
+            if(c==='\r' && text[i+1]==='\n') i++;
+            cur.push(field.trim()); field='';
+            rows.push(cur); cur=[];
+          } else { field+=c; }
         }
-        result.push(cur);
-        return result.map(s=>s.trim());
+        if(field||cur.length){ cur.push(field.trim()); rows.push(cur); }
+        return rows.filter(r=>r.some(c=>c!==''));
       }
 
-      // Converte data americana M/D/YYYY ou MM/DD/YYYY → YYYY-MM-DD
+      const rows = parseCSV(text, sep);
+      if(rows.length < 2){ showToast('warn','⚠️','CSV vazio ou sem dados!'); return; }
+
+      // Normaliza header: remove aspas, espaços e acentos para comparar
+      const norm = s => s.replace(/"/g,'').trim().toUpperCase()
+                         .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                         .replace(/\s+/g,' ');
+      const header = rows[0].map(norm);
+
+      // Localiza colunas pelo nome (busca parcial, sem acento)
+      const col = name => {
+        const n = norm(name);
+        const idx = header.findIndex(h=>h.includes(n)||n.includes(h));
+        return idx;
+      };
+
+      const iFreota    = col('FROTA');
+      const iChegada   = col('CHEGADA');
+      const iModelo    = col('MODELO');
+      const iManut     = col('MANUTENCAO');
+      const iObs       = col('OBSERVACAO');
+      const iKm        = col('KM');
+      const iUltPesada = col('ULTIMA PESADA');
+      const iKmPesada  = col('KM ULTIMA PESADA');
+      const iUltLeve   = col('ULTIMA LEVE');
+      const iKmLeve    = col('KM ULTIMA LEVE');
+      const iBau       = col('BAU');
+
+      // Converte data BR DD/MM/YYYY → YYYY-MM-DD
+      // Ignora datas inválidas (ex: 02/01/1900 = placeholder Excel)
       function parseDate(raw){
-        if(!raw||raw.trim()===''||raw.trim()==='—') return '';
-        raw = raw.trim();
-        // Já está em YYYY-MM-DD
-        if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-        // Formato M/D/YYYY ou MM/DD/YYYY
-        const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if(!raw) return '';
+        raw = raw.replace(/"/g,'').trim();
+        // DD/MM/YYYY
+        const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
         if(m){
-          let [,mo,dy,yr] = m;
-          if(yr.length===2) yr = '20'+yr;
-          // Data inválida (ex: 1/2/1900 = placeholder do Excel)
-          if(parseInt(yr) < 2000) return '';
-          return `${yr}-${mo.padStart(2,'0')}-${dy.padStart(2,'0')}`;
+          const [,d,mo,y] = m;
+          if(parseInt(y) < 2000) return ''; // placeholder
+          return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
         }
-        // Formato DD/MM/YYYY (BR)
-        const m2 = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if(m2){
-          const [,dy,mo,yr] = m2;
-          if(parseInt(yr) < 2000) return '';
-          return `${yr}-${mo}-${dy}`;
-        }
+        // já no formato YYYY-MM-DD
+        if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
         return '';
       }
 
-      // Limpa KM: " 33,851.00 " → "33851"
+      // Converte KM BR: "33.851,00" ou " ZERO " → número string
       function parseKM(raw){
         if(!raw) return '';
-        // Remove espaços, aspas, símbolo R$
-        let s = raw.replace(/[\s"$R]/g,'');
-        // Remove pontos de milhar e vírgulas (formato americano com vírgula como milhar)
-        // " 33,851.00" → 33851
-        s = s.replace(/,/g,'').replace(/\.00$/,'').replace(/\.0$/,'');
-        // Se sobrou só ZERO ou zero
-        if(/^zero$/i.test(s.trim())) return '0';
-        return s.replace(/[^\d]/g,'') || '';
-      }
-
-      // Normaliza tipo de veículo
-      function parseTipo(vagaoBitrem){
-        const v = (vagaoBitrem||'').trim().toUpperCase();
-        if(v.includes('BITREM')) return 'bitrem';
-        if(v.includes('VAG')) return 'vagao';
-        if(v.includes('SEMI')) return 'semireboque';
-        return 'outro';
+        raw = raw.replace(/"/g,'').trim();
+        if(/^zero$/i.test(raw)) return '0';
+        // Remove pontos de milhar, troca vírgula decimal por ponto, pega só inteiro
+        const n = raw.replace(/\./g,'').replace(',','.');
+        const num = parseFloat(n);
+        return isNaN(num) ? '' : String(Math.round(num));
       }
 
       // Normaliza manutenção
       function parseManut(raw){
-        const v = (raw||'').trim().toUpperCase();
-        if(v.includes('CORRETIVA')) return 'corretiva';
+        const v = (raw||'').replace(/"/g,'').trim().toUpperCase();
+        if(v.includes('CORRETIVA'))             return 'corretiva';
         if(v.includes('P.PESADA')||v.includes('PESADA')) return 'preventiva-pesada';
-        if(v.includes('P.LEVE')||v.includes('LEVE')) return 'preventiva-leve';
+        if(v.includes('P.LEVE')||v.includes('LEVE'))     return 'preventiva-leve';
         return '';
       }
 
       // Normaliza baú
       function parseBau(raw){
-        const v = (raw||'').trim().toUpperCase();
+        const v = (raw||'').replace(/"/g,'').trim().toUpperCase();
         if(v==='VAZIO') return 'vazio';
         if(v==='OK') return 'ok';
-        if(v.includes('CARR')||v==='CARREGADO') return 'ok';
-        if(v===''||v==='N/A') return 'n/a';
+        if(v.startsWith('CARR')) return 'ok'; // CARREG.
+        if(v===''||v==='N/A'||v==='-') return 'n/a';
         return 'problema';
       }
 
-      const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-      const rawHeader = parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
-
-      // Mapeamento flexível de colunas (aceita variações de nome)
-      function findCol(candidates){
-        for(const c of candidates){
-          const idx = rawHeader.findIndex(h=>h.includes(c));
-          if(idx>=0) return idx;
-        }
-        return -1;
-      }
-
-      const cols = {
-        frota:     findCol(['FROTA']),
-        chegada:   findCol(['CHEGADA PATIO','CHEGADA','PATIO']),
-        modelo:    findCol(['MODELO']),
-        vagao:     findCol(['VAG','BITREM','TIPO']),
-        manut:     findCol(['MANUTENCAO','MANUT']),
-        obs:       findCol(['OBSERVACAO','OBS']),
-        km:        findCol(['KM']),
-        ultPesada: findCol(['ULTIMA PESADA','ULT. PESADA','ULT PESADA']),
-        ultLeve:   findCol(['ULTIMA LEVE','ULT. LEVE','ULT LEVE']),
-        bau:       findCol(['BAU']),
-      };
+      const g = (row, idx) => idx>=0 ? (row[idx]||'').replace(/^"|"$/g,'').trim() : '';
 
       const toSave = [];
       let added = 0;
-      for(let i=1;i<lines.length;i++){
-        const row = parseCSVLine(lines[i]);
-        const frotaCode = (cols.frota>=0 ? row[cols.frota] : '').replace(/"/g,'').trim();
+      for(let i=1;i<rows.length;i++){
+        const row = rows[i];
+        const frotaCode = g(row, iFreota);
         if(!frotaCode) continue;
 
         const existing = frotas.find(f=>f.frota===frotaCode);
-        const g = (col) => col>=0 ? (row[col]||'').replace(/^"|"$/g,'').trim() : '';
-
         const data = {
           uid:       existing?.uid || (Date.now().toString(36)+Math.random().toString(36).slice(2,5)+i),
           frota:     frotaCode,
-          modelo:    g(cols.modelo),
-          tipo:      parseTipo(g(cols.vagao)),
-          chegada:   parseDate(g(cols.chegada)),
-          km:        parseKM(g(cols.km)),
-          manut:     parseManut(g(cols.manut)),
-          ultPesada: parseDate(g(cols.ultPesada)),
-          kmPesada:  '',
-          ultLeve:   parseDate(g(cols.ultLeve)),
-          kmLeve:    '',
-          bau:       parseBau(g(cols.bau)),
-          dias:      '',
-          obs:       g(cols.obs),
+          modelo:    g(row, iModelo),
+          tipo:      'furgao',
+          chegada:   parseDate(g(row, iChegada)),
+          km:        parseKM(g(row, iKm)),
+          manut:     parseManut(g(row, iManut)),
+          ultPesada: parseDate(g(row, iUltPesada)),
+          kmPesada:  parseKM(g(row, iKmPesada)),
+          ultLeve:   parseDate(g(row, iUltLeve)),
+          kmLeve:    parseKM(g(row, iKmLeve)),
+          bau:       parseBau(g(row, iBau)),
+          obs:       g(row, iObs),
           problemas: '',
         };
         if(!existing) added++;
@@ -858,8 +903,11 @@ window.handleCSV = async function(e){
 
       if(!toSave.length){ showToast('warn','⚠️','Nenhum veículo encontrado no CSV!'); return; }
       const ok = await batchSaveToFirebase(toSave);
-      if(ok) showToast('ok','📂',`CSV importado! ${added} novo(s), ${toSave.length-added} atualizado(s).`);
-    } catch(err){ showToast('err','❌','Erro ao importar: '+err.message); console.error(err); }
+      if(ok) showToast('ok','📂',`Importado! ${added} novo(s), ${toSave.length-added} atualizado(s).`);
+    } catch(err){
+      showToast('err','❌','Erro ao importar: '+err.message);
+      console.error(err);
+    }
   };
   r.readAsText(file, 'UTF-8');
   e.target.value='';
