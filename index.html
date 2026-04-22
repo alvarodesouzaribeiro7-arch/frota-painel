@@ -116,9 +116,8 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
 
 /* BAÚ */
 .bau-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;}
-.bau-ok{background:var(--verde-dim);color:var(--verde);}
-.bau-vazio{background:var(--amar-dim);color:var(--amarelo);}
-.bau-problema{background:var(--verm-dim);color:var(--vermelho);}
+.bau-carregado{background:var(--verm-dim);color:var(--vermelho);}
+.bau-vazio{background:var(--verde-dim);color:var(--verde);}
 .bau-na{color:var(--text3);font-size:12px;}
 
 /* PROGRESS BAR */
@@ -220,7 +219,7 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
       </div>
       <div class="field"><label>Chegada ao Pátio</label><input id="f-chegada" type="date"/></div>
       <div class="field"><label>KM Atual</label><input id="f-km" type="number" placeholder="ex: 52000"/></div>
-      <div class="field"><label>Manutenção em Andamento</label>
+      <div class="field"><label>Preventiva ou corretiva</label>
         <select id="f-manut">
           <option value="">— Nenhuma —</option>
           <option value="preventiva-pesada">Preventiva Pesada</option>
