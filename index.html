@@ -204,30 +204,6 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
   <div class="loading-txt" id="loading-txt">Conectando ao banco de dados...</div>
 </div>
 
-<!-- CONFIG MODAL (aparece quando não tem Firebase configurado) -->
-<div class="modal-overlay" id="config-modal-overlay">
-  <div class="config-modal">
-    <h2>⚙️ Configurar Firebase</h2>
-    <p>Cole abaixo o objeto <code style="color:var(--accent)">firebaseConfig</code> do seu projeto Firebase.<br>
-    Você encontra isso em: <b>Firebase Console → Configurações → Seus Apps → Web App</b></p>
-    <textarea id="firebase-config-input" placeholder='{
-  "apiKey": "AIza...",
-  "authDomain": "seu-projeto.firebaseapp.com",
-  "projectId": "seu-projeto",
-  "storageBucket": "seu-projeto.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abc123"
-}'></textarea>
-    <div class="config-hint">
-      💡 Esta configuração ficará salva neste navegador.<br>
-      Não tem projeto Firebase ainda? <a href="https://console.firebase.google.com" target="_blank">Crie gratuitamente aqui →</a>
-    </div>
-    <div class="modal-actions" style="margin-top:18px;">
-      <button class="btn btn-primary" onclick="saveFirebaseConfig()">🔌 Conectar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL ADICIONAR/EDITAR -->
 <div class="modal-overlay" id="modal" onclick="closeModalOverlay(event)">
   <div class="modal">
@@ -293,7 +269,6 @@ td{padding:10px 12px;font-size:13px;vertical-align:middle;}
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ Exportar CSV</button>
     <button class="btn btn-ghost" onclick="importarCSV()">📂 Importar CSV</button>
     <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)"/>
-    <button class="btn btn-ghost" onclick="openConfigModal()" title="Configurar Firebase">⚙️</button>
     <button class="btn btn-primary" onclick="openModal()">+ Adicionar Veículo</button>
   </div>
 </div>
@@ -359,8 +334,15 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ===== FIREBASE CONFIG =====
-// Cole aqui o seu firebaseConfig OU configure pelo botão ⚙️ na interface
-const HARDCODED_CONFIG = null; // ex: { apiKey: "...", projectId: "..." }
+// ✅ SUAS CREDENCIAIS FIXAS — ninguém precisa configurar nada ao abrir o site
+const HARDCODED_CONFIG = {
+  apiKey:            "AIzaSyBCVjH...",
+  authDomain:        "tragetta-5c119.firebaseapp.com",
+  projectId:         "tragetta-5c119",
+  storageBucket:     "tragetta-5c119.firebasestorage.app",
+  messagingSenderId: "892426675968",
+  appId:             "1:892426675968:web:777a02ce64b280264135e5"
+};
 
 // ===== STATE =====
 let frotas = [];
@@ -380,12 +362,6 @@ function setSyncStatus(status, text){
 }
 
 // ===== FIREBASE INIT =====
-function getStoredConfig(){
-  try {
-    const raw = localStorage.getItem('firebase_config_frota');
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
 
 async function initFirebase(config){
   try {
@@ -408,10 +384,9 @@ async function initFirebase(config){
     });
 
   } catch(err){
-    setSyncStatus('error', 'Config inválida');
-    showToast('err','❌','Config Firebase inválida: '+err.message);
+    setSyncStatus('error', 'Erro de configuração');
+    showToast('err','❌','Erro Firebase: '+err.message);
     document.getElementById('loading-overlay').classList.add('hidden');
-    openConfigModal();
   }
 }
 
@@ -456,28 +431,6 @@ async function batchSaveToFirebase(items){
     setSyncStatus('error', 'Erro ao importar');
     showToast('err','❌','Erro ao importar: '+err.message);
     return false;
-  }
-}
-
-// ===== CONFIG MODAL =====
-window.openConfigModal = function(){
-  const stored = getStoredConfig();
-  if(stored) document.getElementById('firebase-config-input').value = JSON.stringify(stored, null, 2);
-  document.getElementById('config-modal-overlay').classList.add('open');
-}
-
-window.saveFirebaseConfig = function(){
-  const raw = document.getElementById('firebase-config-input').value.trim();
-  try {
-    const config = JSON.parse(raw);
-    if(!config.projectId) throw new Error('projectId ausente');
-    localStorage.setItem('firebase_config_frota', JSON.stringify(config));
-    document.getElementById('config-modal-overlay').classList.remove('open');
-    document.getElementById('loading-overlay').classList.remove('hidden');
-    document.getElementById('loading-txt').textContent = 'Conectando ao Firebase...';
-    initFirebase(config);
-  } catch(err){
-    showToast('err','❌','JSON inválido: '+err.message);
   }
 }
 
@@ -570,7 +523,7 @@ window.render = function(){
   document.getElementById('kpi-vencida').textContent  = all.filter(f=>f.status==='vencida').length;
   document.getElementById('kpi-antecipar').textContent= all.filter(f=>f.status==='urgente'||f.status==='alerta').length;
   document.getElementById('kpi-emdia').textContent    = all.filter(f=>f.status==='emdia').length;
-  document.getElementById('kpi-corretiva').textContent= all.filter(f=>f.manut==='corretiva').length;
+  document.getElementById('kpi-corretiva').textContent= all.filter(f=>(f.manut||'').toLowerCase().includes('corretiva')).length;
   document.getElementById('kpi-bau').textContent      = all.filter(f=>f.bau==='vazio'||f.bau==='problema').length;
   document.getElementById('count-label').textContent  = `${lista.length} veículo${lista.length!==1?'s':''}`;
 
@@ -621,7 +574,7 @@ window.render = function(){
       'corretiva':         '🔧 Corretiva',
       '':                  '—',
     };
-    const manutTxt = manutMap[f.manut||'']||'—';
+    const manutTxt = manutMap[f.manut||''] ?? `🔧 ${f.manut}`;
 
     const obsText = [f.obs, f.problemas].filter(Boolean).join(' · ') || '—';
     const obsHtml = `<span style="font-size:12px;color:var(--text2);max-width:200px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${obsText.replace(/"/g,'&quot;')}">${obsText}</span>`;
@@ -767,44 +720,146 @@ window.handleCSV = async function(e){
   const r = new FileReader();
   r.onload = async ev => {
     try {
-      const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-      const sep = lines[0].includes(';') ? ';' : ',';
-      const header = lines[0].split(sep).map(h=>h.replace(/"/g,'').trim().toUpperCase());
-      const colIdx = {};
-      ['FROTA','MODELO','TIPO','CHEGADA PATIO','KM ATUAL','MANUTENÇÃO','ULTIMA PESADA','KM PESADA','ULTIMA LEVE','KM LEVE','BAU','OBSERVAÇÃO','PROBLEMAS']
-        .forEach(c => colIdx[c] = header.indexOf(c));
+      // Parse CSV respeitando campos entre aspas (que podem ter vírgulas dentro)
+      function parseCSVLine(line) {
+        const result = [];
+        let cur = '', inQ = false;
+        for(let i=0;i<line.length;i++){
+          const c = line[i];
+          if(c==='"'){ inQ=!inQ; }
+          else if(c===','&&!inQ){ result.push(cur); cur=''; }
+          else { cur+=c; }
+        }
+        result.push(cur);
+        return result.map(s=>s.trim());
+      }
 
-      const g = (row, col) => (row[colIdx[col]]||'').replace(/^"|"$/g,'').trim();
+      // Converte data americana M/D/YYYY ou MM/DD/YYYY → YYYY-MM-DD
+      function parseDate(raw){
+        if(!raw||raw.trim()===''||raw.trim()==='—') return '';
+        raw = raw.trim();
+        // Já está em YYYY-MM-DD
+        if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+        // Formato M/D/YYYY ou MM/DD/YYYY
+        const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if(m){
+          let [,mo,dy,yr] = m;
+          if(yr.length===2) yr = '20'+yr;
+          // Data inválida (ex: 1/2/1900 = placeholder do Excel)
+          if(parseInt(yr) < 2000) return '';
+          return `${yr}-${mo.padStart(2,'0')}-${dy.padStart(2,'0')}`;
+        }
+        // Formato DD/MM/YYYY (BR)
+        const m2 = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if(m2){
+          const [,dy,mo,yr] = m2;
+          if(parseInt(yr) < 2000) return '';
+          return `${yr}-${mo}-${dy}`;
+        }
+        return '';
+      }
+
+      // Limpa KM: " 33,851.00 " → "33851"
+      function parseKM(raw){
+        if(!raw) return '';
+        // Remove espaços, aspas, símbolo R$
+        let s = raw.replace(/[\s"$R]/g,'');
+        // Remove pontos de milhar e vírgulas (formato americano com vírgula como milhar)
+        // " 33,851.00" → 33851
+        s = s.replace(/,/g,'').replace(/\.00$/,'').replace(/\.0$/,'');
+        // Se sobrou só ZERO ou zero
+        if(/^zero$/i.test(s.trim())) return '0';
+        return s.replace(/[^\d]/g,'') || '';
+      }
+
+      // Normaliza tipo de veículo
+      function parseTipo(vagaoBitrem){
+        const v = (vagaoBitrem||'').trim().toUpperCase();
+        if(v.includes('BITREM')) return 'bitrem';
+        if(v.includes('VAG')) return 'vagao';
+        if(v.includes('SEMI')) return 'semireboque';
+        return 'outro';
+      }
+
+      // Normaliza manutenção
+      function parseManut(raw){
+        const v = (raw||'').trim().toUpperCase();
+        if(v.includes('CORRETIVA')) return 'corretiva';
+        if(v.includes('P.PESADA')||v.includes('PESADA')) return 'preventiva-pesada';
+        if(v.includes('P.LEVE')||v.includes('LEVE')) return 'preventiva-leve';
+        return '';
+      }
+
+      // Normaliza baú
+      function parseBau(raw){
+        const v = (raw||'').trim().toUpperCase();
+        if(v==='VAZIO') return 'vazio';
+        if(v==='OK') return 'ok';
+        if(v.includes('CARR')||v==='CARREGADO') return 'ok';
+        if(v===''||v==='N/A') return 'n/a';
+        return 'problema';
+      }
+
+      const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+      const rawHeader = parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+
+      // Mapeamento flexível de colunas (aceita variações de nome)
+      function findCol(candidates){
+        for(const c of candidates){
+          const idx = rawHeader.findIndex(h=>h.includes(c));
+          if(idx>=0) return idx;
+        }
+        return -1;
+      }
+
+      const cols = {
+        frota:     findCol(['FROTA']),
+        chegada:   findCol(['CHEGADA PATIO','CHEGADA','PATIO']),
+        modelo:    findCol(['MODELO']),
+        vagao:     findCol(['VAG','BITREM','TIPO']),
+        manut:     findCol(['MANUTENCAO','MANUT']),
+        obs:       findCol(['OBSERVACAO','OBS']),
+        km:        findCol(['KM']),
+        ultPesada: findCol(['ULTIMA PESADA','ULT. PESADA','ULT PESADA']),
+        ultLeve:   findCol(['ULTIMA LEVE','ULT. LEVE','ULT LEVE']),
+        bau:       findCol(['BAU']),
+      };
 
       const toSave = [];
       let added = 0;
       for(let i=1;i<lines.length;i++){
-        const row = lines[i].split(sep);
-        const frotaCode = g(row,'FROTA'); if(!frotaCode) continue;
+        const row = parseCSVLine(lines[i]);
+        const frotaCode = (cols.frota>=0 ? row[cols.frota] : '').replace(/"/g,'').trim();
+        if(!frotaCode) continue;
+
         const existing = frotas.find(f=>f.frota===frotaCode);
+        const g = (col) => col>=0 ? (row[col]||'').replace(/^"|"$/g,'').trim() : '';
+
         const data = {
           uid:       existing?.uid || (Date.now().toString(36)+Math.random().toString(36).slice(2,5)+i),
           frota:     frotaCode,
-          modelo:    g(row,'MODELO'),
-          tipo:      g(row,'TIPO')||'outro',
-          chegada:   g(row,'CHEGADA PATIO'),
-          km:        g(row,'KM ATUAL').replace(/[.,\s]/g,'').replace(/(\d+)(\d{3})$/,'$1$2')||'',
-          manut:     g(row,'MANUTENÇÃO'),
-          ultPesada: g(row,'ULTIMA PESADA'),
-          kmPesada:  g(row,'KM PESADA'),
-          ultLeve:   g(row,'ULTIMA LEVE'),
-          kmLeve:    g(row,'KM LEVE'),
-          bau:       g(row,'BAU')||'n/a',
-          obs:       g(row,'OBSERVAÇÃO'),
-          problemas: g(row,'PROBLEMAS'),
+          modelo:    g(cols.modelo),
+          tipo:      parseTipo(g(cols.vagao)),
+          chegada:   parseDate(g(cols.chegada)),
+          km:        parseKM(g(cols.km)),
+          manut:     parseManut(g(cols.manut)),
+          ultPesada: parseDate(g(cols.ultPesada)),
+          kmPesada:  '',
+          ultLeve:   parseDate(g(cols.ultLeve)),
+          kmLeve:    '',
+          bau:       parseBau(g(cols.bau)),
+          dias:      '',
+          obs:       g(cols.obs),
+          problemas: '',
         };
         if(!existing) added++;
         toSave.push(data);
       }
 
+      if(!toSave.length){ showToast('warn','⚠️','Nenhum veículo encontrado no CSV!'); return; }
       const ok = await batchSaveToFirebase(toSave);
-      if(ok) showToast('ok','📂',`CSV importado! ${added} novo(s) adicionado(s).`);
-    } catch(err){ showToast('err','❌','Erro ao importar: '+err.message); }
+      if(ok) showToast('ok','📂',`CSV importado! ${added} novo(s), ${toSave.length-added} atualizado(s).`);
+    } catch(err){ showToast('err','❌','Erro ao importar: '+err.message); console.error(err); }
   };
   r.readAsText(file, 'UTF-8');
   e.target.value='';
@@ -820,15 +875,7 @@ window.showToast = function(type, icon, msg, dur=4000){
 }
 
 // ===== INIT =====
-const config = HARDCODED_CONFIG || getStoredConfig();
-if(config){
-  initFirebase(config);
-} else {
-  document.getElementById('loading-overlay').classList.add('hidden');
-  setSyncStatus('error', 'Não configurado');
-  openConfigModal();
-}
-
+initFirebase(HARDCODED_CONFIG);
 render();
 </script>
 </body>
