@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel de Manutenção — Frota</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #0C0E0C;
+  --surface:  #111811;
+  --surface2: #171C17;
+  --border:   #1E2A1E;
+  --border2:  #243024;
+  --text:     #E8EDE8;
+  --text2:    #869E86;
+  --text3:    #4A5C4A;
+  --verde:    #27C93F;
+  --verde-dim:rgba(39,201,63,.12);
+  --amarelo:  #f5a623;
+  --amar-dim: rgba(245,166,35,.12);
+  --vermelho: #ff4757;
+  --verm-dim: rgba(255,71,87,.12);
+  --azul:     #3d8ef8;
+  --azul-dim: rgba(61,142,248,.12);
+  --accent:   #27C93F;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;flex-wrap:wrap;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#1A9E2E,#27C93F);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:#fff;}
+.header-title h1{font-size:15px;font-weight:600;letter-spacing:.02em;}
+.header-title p{font-size:11px;color:var(--text2);margin-top:1px;font-family:'Space Mono',monospace;}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.badge-date{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);}
+.btn{border:none;border-radius:8px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{opacity:.85;}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.btn-danger:hover{border-color:var(--vermelho);color:var(--vermelho);}
+
+/* SYNC STATUS */
+.sync-badge{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-size:11px;color:var(--text2);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.sync-dot.online{background:var(--verde);box-shadow:0 0 6px var(--verde);}
+.sync-dot.saving{background:var(--amarelo);animation:pulse .8s infinite;}
+.sync-dot.error{background:var(--vermelho);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* MAIN */
+.main{padding:24px 28px;max-width:1500px;margin:0 auto;}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi-card.total::before{background:var(--azul);}
+.kpi-card.vencida::before{background:var(--vermelho);}
+.kpi-card.antecipar::before{background:var(--amarelo);}
+.kpi-card.emdia::before{background:var(--verde);}
+.kpi-card.corretiva::before{background:var(--text3);}
+.kpi-card.bau::before{background:#a78bfa;}
+.kpi-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
+.kpi-number{font-family:'Space Mono',monospace;font-size:34px;font-weight:700;line-height:1;}
+.kpi-card.total .kpi-number{color:var(--azul);}
+.kpi-card.vencida .kpi-number{color:var(--vermelho);}
+.kpi-card.antecipar .kpi-number{color:var(--amarelo);}
+.kpi-card.emdia .kpi-number{color:var(--verde);}
+.kpi-card.corretiva .kpi-number{color:var(--text2);}
+.kpi-card.bau .kpi-number{color:#a78bfa;}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:5px;}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.search-box{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:200px;outline:none;transition:border-color .2s;}
+.search-box:focus{border-color:var(--accent);}
+.search-box::placeholder{color:var(--text3);}
+.filter-btn{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 13px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;}
+.filter-btn:hover,.filter-btn.active{color:var(--text);}
+.filter-btn.active.f-all{border-color:var(--azul);background:var(--azul-dim);color:var(--azul);}
+.filter-btn.active.f-vencida{border-color:var(--vermelho);background:var(--verm-dim);color:var(--vermelho);}
+.filter-btn.active.f-antecipar{border-color:var(--amarelo);background:var(--amar-dim);color:var(--amarelo);}
+.filter-btn.active.f-emdia{border-color:var(--verde);background:var(--verde-dim);color:var(--verde);}
+.filter-btn.active.f-bau{border-color:#a78bfa;background:rgba(167,139,250,.12);color:#a78bfa;}
+.toolbar-right{margin-left:auto;font-size:11px;color:var(--text2);}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto;margin-bottom:20px;}
+table{width:100%;border-collapse:collapse;min-width:1400px;}
+thead tr{background:var(--surface2);border-bottom:1px solid var(--border);}
+thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap;}
+thead th:hover{color:var(--text);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+td{padding:10px 12px;font-size:13px;vertical-align:middle;}
+.frota-code{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
+.tipo-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.tipo-pesada{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3);}
+.tipo-leve{background:var(--azul-dim);color:var(--azul);border:1px solid rgba(61,142,248,.3);}
+.tipo-corretiva{background:rgba(74,85,104,.2);color:var(--text2);border:1px solid var(--border2);}
+
+/* STATUS */
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;}
+.s-vencida{background:var(--verm-dim);color:var(--vermelho);border:1px solid rgba(255,71,87,.25);}
+.s-urgente{background:rgba(255,100,50,.12);color:#ff6432;border:1px solid rgba(255,100,50,.25);}
+.s-alerta{background:var(--amar-dim);color:var(--amarelo);border:1px solid rgba(245,166,35,.25);}
+.s-emdia{background:var(--verde-dim);color:var(--verde);border:1px solid rgba(39,201,63,.25);}
+.s-semdata{background:rgba(74,85,104,.15);color:var(--text2);border:1px solid var(--border2);}
+
+/* BAÚ */
+.bau-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;}
+.bau-ok{background:var(--verde-dim);color:var(--verde);}
+.bau-vazio{background:var(--amar-dim);color:var(--amarelo);}
+.bau-problema{background:var(--verm-dim);color:var(--vermelho);}
+.bau-na{color:var(--text3);font-size:12px;}
+
+/* PROGRESS BAR */
+.prog-wrap{width:100px;}
+.prog-bar{height:5px;border-radius:3px;background:var(--border2);overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s;}
+.prog-pct{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);}
+
+/* ACTION BTNS */
+.action-btns{display:flex;gap:6px;}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:6px;border:none;cursor:pointer;font-weight:600;transition:all .15s;}
+.btn-edit{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);}
+.btn-edit:hover{border-color:var(--accent);color:var(--accent);}
+.btn-del{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);}
+.btn-del:hover{border-color:var(--vermelho);color:var(--vermelho);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;place-items:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:grid;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;animation:modal-in .2s ease;}
+@keyframes modal-in{from{opacity:0;transform:scale(.95) translateY(-10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal h2{font-size:1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#fff;margin-bottom:22px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid.full{grid-template-columns:1fr;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field.span2{grid-column:1/-1;}
+.field label{font-size:.72rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:9px 13px;outline:none;transition:border-color .2s;width:100%;}
+.field textarea{resize:vertical;min-height:70px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field select option{background:var(--surface);}
+.modal-actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end;}
+.divider{grid-column:1/-1;border:none;border-top:1px solid var(--border);margin:4px 0;}
+
+/* TOAST */
+#toast-container{position:fixed;top:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:10px;}
+.toast{background:var(--surface);border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:12px;font-size:.88rem;font-weight:600;animation:slide-in .3s ease;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.toast.ok{border-left:3px solid var(--verde);}
+.toast.warn{border-left:3px solid var(--amarelo);}
+.toast.err{border-left:3px solid var(--vermelho);}
+@keyframes slide-in{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slide-out{from{transform:translateX(0);opacity:1;}to{transform:translateX(120%);opacity:0;}}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--text2);margin-bottom:10px;align-items:center;}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+
+/* EMPTY */
+.empty-row td{text-align:center;padding:50px;color:var(--text2);}
+
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;gap:16px;}
+.loading-overlay.hidden{display:none;}
+.spinner{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-txt{font-family:'Space Mono',monospace;font-size:12px;color:var(--text2);}
+
+/* CONFIG MODAL */
+.config-modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px;width:100%;max-width:540px;animation:modal-in .2s ease;}
+.config-modal h2{font-size:1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#fff;margin-bottom:6px;}
+.config-modal p{font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+.config-modal textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:12px;outline:none;resize:vertical;min-height:160px;transition:border-color .2s;}
+.config-modal textarea:focus{border-color:var(--accent);}
+.config-hint{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5;}
+.config-hint a{color:var(--accent);text-decoration:none;}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .kpi-row{grid-template-columns:repeat(3,1fr);}
+  .header{padding:14px;}
+  .main{padding:14px;}
+  .form-grid{grid-template-columns:1fr;}
+  .field.span2{grid-column:1;}
+}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-txt" id="loading-txt">Conectando ao banco de dados...</div>
+</div>
+
+<!-- CONFIG MODAL (aparece quando não tem Firebase configurado) -->
+<div class="modal-overlay" id="config-modal-overlay">
+  <div class="config-modal">
+    <h2>⚙️ Configurar Firebase</h2>
+    <p>Cole abaixo o objeto <code style="color:var(--accent)">firebaseConfig</code> do seu projeto Firebase.<br>
+    Você encontra isso em: <b>Firebase Console → Configurações → Seus Apps → Web App</b></p>
+    <textarea id="firebase-config-input" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "seu-projeto.firebaseapp.com",
+  "projectId": "seu-projeto",
+  "storageBucket": "seu-projeto.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abc123"
+}'></textarea>
+    <div class="config-hint">
+      💡 Esta configuração ficará salva neste navegador.<br>
+      Não tem projeto Firebase ainda? <a href="https://console.firebase.google.com" target="_blank">Crie gratuitamente aqui →</a>
+    </div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()">🔌 Conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADICIONAR/EDITAR -->
+<div class="modal-overlay" id="modal" onclick="closeModalOverlay(event)">
+  <div class="modal">
+    <h2 id="modal-title">➕ Adicionar Veículo</h2>
+    <div class="form-grid">
+      <div class="field"><label>Frota (código)</label><input id="f-frota" type="text" placeholder="ex: 2146"/></div>
+      <div class="field"><label>Modelo</label><input id="f-modelo" type="text" placeholder="ex: Randon SR BA"/></div>
+      <div class="field"><label>Tipo</label>
+        <select id="f-tipo">
+          <option value="vagao">Vagão</option>
+          <option value="bitrem">Bitrem</option>
+          <option value="semireboque">Semirreboque</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="field"><label>Chegada ao Pátio</label><input id="f-chegada" type="date"/></div>
+      <div class="field"><label>KM Atual</label><input id="f-km" type="number" placeholder="ex: 52000"/></div>
+      <div class="field"><label>Manutenção em Andamento</label>
+        <select id="f-manut">
+          <option value="">— Nenhuma —</option>
+          <option value="preventiva-pesada">Preventiva Pesada</option>
+          <option value="preventiva-leve">Preventiva Leve</option>
+          <option value="corretiva">Corretiva</option>
+        </select>
+      </div>
+      <hr class="divider"/>
+      <div class="field"><label>Última Preventiva Pesada (data)</label><input id="f-ult-pesada" type="date"/></div>
+      <div class="field"><label>KM na Última Pesada</label><input id="f-km-pesada" type="number" placeholder="ex: 0"/></div>
+      <div class="field"><label>Última Preventiva Leve (data)</label><input id="f-ult-leve" type="date"/></div>
+      <div class="field"><label>KM na Última Leve</label><input id="f-km-leve" type="number" placeholder="ex: 0"/></div>
+      <hr class="divider"/>
+      <div class="field"><label>Baú</label>
+        <select id="f-bau">
+          <option value="n/a">N/A (não tem baú)</option>
+          <option value="ok">✅ OK / Com carga</option>
+          <option value="vazio">⚠️ Vazio</option>
+          <option value="problema">❌ Com problema</option>
+        </select>
+      </div>
+      <div class="field"><label>Dias no Bolsão (manual)</label><input id="f-dias" type="number" placeholder="Calculado auto se tiver chegada"/></div>
+      <div class="field span2"><label>Observação</label><textarea id="f-obs" placeholder="Observações gerais..."></textarea></div>
+      <div class="field span2"><label>Problemas / Serviços em Andamento</label><textarea id="f-problemas" placeholder="Descreva os problemas ou serviços sendo realizados..."></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-icon">🚛</div>
+    <div class="header-title">
+      <h1>Painel de Manutenção Preventiva</h1>
+      <p>GESTÃO DE FROTAS · REBOQUES &amp; SEMIRREBOQUES</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="badge-date" id="currentDate"></div>
+    <div class="sync-badge" id="sync-badge"><div class="sync-dot" id="sync-dot"></div><span id="sync-txt">Conectando...</span></div>
+    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Exportar CSV</button>
+    <button class="btn btn-ghost" onclick="importarCSV()">📂 Importar CSV</button>
+    <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)"/>
+    <button class="btn btn-ghost" onclick="openConfigModal()" title="Configurar Firebase">⚙️</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Adicionar Veículo</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card total"><div class="kpi-label">Total no Bolsão</div><div class="kpi-number" id="kpi-total">—</div><div class="kpi-sub" id="kpi-total-sub">veículos</div></div>
+    <div class="kpi-card vencida"><div class="kpi-label">❌ Vencidas</div><div class="kpi-number" id="kpi-vencida">—</div><div class="kpi-sub">Prev. vencida</div></div>
+    <div class="kpi-card antecipar"><div class="kpi-label">⚠️ A Antecipar</div><div class="kpi-number" id="kpi-antecipar">—</div><div class="kpi-sub">Menos de 90 dias</div></div>
+    <div class="kpi-card emdia"><div class="kpi-label">✅ Em Dia</div><div class="kpi-number" id="kpi-emdia">—</div><div class="kpi-sub">Dentro do intervalo</div></div>
+    <div class="kpi-card corretiva"><div class="kpi-label">🔧 Corretivas</div><div class="kpi-number" id="kpi-corretiva">—</div><div class="kpi-sub">Em manutenção corretiva</div></div>
+    <div class="kpi-card bau"><div class="kpi-label">📦 Baú c/ Problema</div><div class="kpi-number" id="kpi-bau">—</div><div class="kpi-sub">Vazio ou com defeito</div></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <input class="search-box" type="text" id="search" placeholder="Buscar frota, modelo..." oninput="render()"/>
+    <button class="filter-btn active f-all" onclick="setFilter('all',this)">Todos</button>
+    <button class="filter-btn f-vencida" onclick="setFilter('vencida',this)">❌ Vencidas</button>
+    <button class="filter-btn f-antecipar" onclick="setFilter('antecipar',this)">⚠️ A Antecipar</button>
+    <button class="filter-btn f-emdia" onclick="setFilter('emdia',this)">✅ Em Dia</button>
+    <button class="filter-btn f-bau" onclick="setFilter('bau',this)">📦 Baú</button>
+    <div class="toolbar-right" id="count-label">—</div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('frota')">Frota ⇅</th>
+          <th onclick="sortBy('modelo')">Modelo ⇅</th>
+          <th>Tipo</th>
+          <th onclick="sortBy('km')">KM Atual ⇅</th>
+          <th>Progresso Pesada</th>
+          <th onclick="sortBy('ultPesada')">Últ. Pesada ⇅</th>
+          <th onclick="sortBy('ultLeve')">Últ. Leve ⇅</th>
+          <th onclick="sortBy('status')">Status Prev. ⇅</th>
+          <th onclick="sortBy('dias')">Dias Bolsão ⇅</th>
+          <th onclick="sortBy('bau')">Baú ⇅</th>
+          <th>Manutenção</th>
+          <th>Observação / Problemas</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <span>Progresso ciclo pesada (60.000 km):</span>
+    <span><span class="legend-dot" style="background:var(--verde)"></span> &lt;90% Em dia</span>
+    <span><span class="legend-dot" style="background:var(--amarelo)"></span> 90–100% A antecipar</span>
+    <span><span class="legend-dot" style="background:var(--vermelho)"></span> &gt;100% Vencida</span>
+    <span style="margin-left:8px;color:var(--text3)">Leve: ciclo 30.000 km · Pesada: ciclo 60.000 km</span>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ===== FIREBASE CONFIG =====
+// Cole aqui o seu firebaseConfig OU configure pelo botão ⚙️ na interface
+const HARDCODED_CONFIG = null; // ex: { apiKey: "...", projectId: "..." }
+
+// ===== STATE =====
+let frotas = [];
+let editingId = null;
+let currentFilter = 'all';
+let sortField = 'frota';
+let sortAsc = true;
+let db = null;
+let unsubscribe = null;
+
+// ===== SYNC UI =====
+function setSyncStatus(status, text){
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-txt');
+  dot.className = 'sync-dot ' + status;
+  txt.textContent = text;
+}
+
+// ===== FIREBASE INIT =====
+function getStoredConfig(){
+  try {
+    const raw = localStorage.getItem('firebase_config_frota');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+async function initFirebase(config){
+  try {
+    const app = initializeApp(config);
+    db = getFirestore(app);
+    setSyncStatus('saving', 'Conectando...');
+
+    // Escuta em tempo real
+    if(unsubscribe) unsubscribe();
+    unsubscribe = onSnapshot(collection(db, 'frotas'), (snapshot) => {
+      frotas = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
+      render();
+      setSyncStatus('online', 'Online · Tempo real');
+      document.getElementById('loading-overlay').classList.add('hidden');
+    }, (err) => {
+      console.error(err);
+      setSyncStatus('error', 'Erro de conexão');
+      showToast('err','❌','Erro ao conectar: '+err.message);
+      document.getElementById('loading-overlay').classList.add('hidden');
+    });
+
+  } catch(err){
+    setSyncStatus('error', 'Config inválida');
+    showToast('err','❌','Config Firebase inválida: '+err.message);
+    document.getElementById('loading-overlay').classList.add('hidden');
+    openConfigModal();
+  }
+}
+
+// ===== SAVE TO FIREBASE =====
+async function saveToFirebase(data){
+  if(!db){ showToast('err','❌','Banco não conectado!'); return false; }
+  try {
+    setSyncStatus('saving', 'Salvando...');
+    await setDoc(doc(db, 'frotas', data.uid), data);
+    return true;
+  } catch(err){
+    setSyncStatus('error', 'Erro ao salvar');
+    showToast('err','❌','Erro ao salvar: '+err.message);
+    return false;
+  }
+}
+
+async function deleteFromFirebase(uid){
+  if(!db){ showToast('err','❌','Banco não conectado!'); return false; }
+  try {
+    setSyncStatus('saving', 'Removendo...');
+    await deleteDoc(doc(db, 'frotas', uid));
+    return true;
+  } catch(err){
+    setSyncStatus('error', 'Erro ao remover');
+    showToast('err','❌','Erro ao remover: '+err.message);
+    return false;
+  }
+}
+
+async function batchSaveToFirebase(items){
+  if(!db){ showToast('err','❌','Banco não conectado!'); return false; }
+  try {
+    setSyncStatus('saving', 'Importando...');
+    const batch = writeBatch(db);
+    items.forEach(item => {
+      batch.set(doc(db, 'frotas', item.uid), item);
+    });
+    await batch.commit();
+    return true;
+  } catch(err){
+    setSyncStatus('error', 'Erro ao importar');
+    showToast('err','❌','Erro ao importar: '+err.message);
+    return false;
+  }
+}
+
+// ===== CONFIG MODAL =====
+window.openConfigModal = function(){
+  const stored = getStoredConfig();
+  if(stored) document.getElementById('firebase-config-input').value = JSON.stringify(stored, null, 2);
+  document.getElementById('config-modal-overlay').classList.add('open');
+}
+
+window.saveFirebaseConfig = function(){
+  const raw = document.getElementById('firebase-config-input').value.trim();
+  try {
+    const config = JSON.parse(raw);
+    if(!config.projectId) throw new Error('projectId ausente');
+    localStorage.setItem('firebase_config_frota', JSON.stringify(config));
+    document.getElementById('config-modal-overlay').classList.remove('open');
+    document.getElementById('loading-overlay').classList.remove('hidden');
+    document.getElementById('loading-txt').textContent = 'Conectando ao Firebase...';
+    initFirebase(config);
+  } catch(err){
+    showToast('err','❌','JSON inválido: '+err.message);
+  }
+}
+
+// ===== DATA =====
+document.getElementById('currentDate').textContent = new Date().toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();
+
+// ===== CALCULA STATUS =====
+function calcStatus(f){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const km   = parseFloat(f.km) || 0;
+
+  // Por KM
+  let statusKM = null, pctKM = 0;
+  if(f.kmPesada !== '' && f.kmPesada !== null && f.kmPesada !== undefined){
+    const cicloKM = km - (parseFloat(f.kmPesada)||0);
+    pctKM = cicloKM / 60000;
+    if(pctKM > 1)      statusKM = 'vencida';
+    else if(pctKM>.9)  statusKM = 'antecipar';
+    else               statusKM = 'emdia';
+  }
+
+  // Por tempo pesada (1 ano)
+  let statusPesadaTempo = null, diasPesada = null;
+  if(f.ultPesada){
+    const ult = new Date(f.ultPesada+'T00:00:00');
+    const vence = new Date(ult); vence.setFullYear(vence.getFullYear()+1);
+    diasPesada = Math.floor((vence - hoje)/(1000*60*60*24));
+    if(diasPesada < 0)   statusPesadaTempo = 'vencida';
+    else if(diasPesada < 30)  statusPesadaTempo = 'urgente';
+    else if(diasPesada < 90)  statusPesadaTempo = 'alerta';
+    else                      statusPesadaTempo = 'emdia';
+  }
+
+  // Por tempo leve (6 meses)
+  let statusLeveTempo = null, diasLeve = null;
+  if(f.ultLeve){
+    const ult2 = new Date(f.ultLeve+'T00:00:00');
+    const vence2 = new Date(ult2); vence2.setMonth(vence2.getMonth()+6);
+    diasLeve = Math.floor((vence2 - hoje)/(1000*60*60*24));
+    if(diasLeve < 0)    statusLeveTempo = 'vencida';
+    else if(diasLeve < 30) statusLeveTempo = 'urgente';
+    else if(diasLeve < 90) statusLeveTempo = 'alerta';
+    else                   statusLeveTempo = 'emdia';
+  }
+
+  // Status global: pior entre pesada (km e tempo) e leve (tempo)
+  const ordem = ['vencida','urgente','alerta','emdia','semdata'];
+  const pick = (...arr) => arr.filter(Boolean).sort((a,b)=>ordem.indexOf(a)-ordem.indexOf(b))[0] || 'semdata';
+  const status = pick(statusKM, statusPesadaTempo, statusLeveTempo);
+
+  // Dias no bolsão
+  let diasBolsao = parseInt(f.dias) || 0;
+  if(f.chegada){
+    const ch = new Date(f.chegada+'T00:00:00');
+    diasBolsao = Math.floor((hoje - ch)/(1000*60*60*24));
+  }
+
+  return { status, pctKM, diasPesada, diasLeve, diasBolsao };
+}
+
+// ===== RENDER =====
+window.render = function(){
+  const q = document.getElementById('search').value.toLowerCase();
+
+  let lista = frotas.map((f,i) => ({...f, _idx:i, ...calcStatus(f)}));
+
+  if(currentFilter === 'vencida')   lista = lista.filter(f=>f.status==='vencida');
+  if(currentFilter === 'antecipar') lista = lista.filter(f=>f.status==='urgente'||f.status==='alerta');
+  if(currentFilter === 'emdia')     lista = lista.filter(f=>f.status==='emdia');
+  if(currentFilter === 'bau')       lista = lista.filter(f=>f.bau==='vazio'||f.bau==='problema');
+
+  if(q) lista = lista.filter(f =>
+    (f.frota||'').toLowerCase().includes(q) ||
+    (f.modelo||'').toLowerCase().includes(q) ||
+    (f.obs||'').toLowerCase().includes(q) ||
+    (f.problemas||'').toLowerCase().includes(q)
+  );
+
+  lista.sort((a,b)=>{
+    let va = a[sortField]||'', vb = b[sortField]||'';
+    if(sortField==='km'||sortField==='dias'||sortField==='diasBolsao'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    if(va<vb) return sortAsc?-1:1;
+    if(va>vb) return sortAsc?1:-1;
+    return 0;
+  });
+
+  // KPIs
+  const all = frotas.map(f=>({...f,...calcStatus(f)}));
+  document.getElementById('kpi-total').textContent    = frotas.length;
+  document.getElementById('kpi-vencida').textContent  = all.filter(f=>f.status==='vencida').length;
+  document.getElementById('kpi-antecipar').textContent= all.filter(f=>f.status==='urgente'||f.status==='alerta').length;
+  document.getElementById('kpi-emdia').textContent    = all.filter(f=>f.status==='emdia').length;
+  document.getElementById('kpi-corretiva').textContent= all.filter(f=>f.manut==='corretiva').length;
+  document.getElementById('kpi-bau').textContent      = all.filter(f=>f.bau==='vazio'||f.bau==='problema').length;
+  document.getElementById('count-label').textContent  = `${lista.length} veículo${lista.length!==1?'s':''}`;
+
+  const tbody = document.getElementById('tbody');
+  if(!lista.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="13">Nenhum veículo encontrado.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(f => {
+    const pct = Math.min(f.pctKM*100, 150);
+    const progColor = pct>100?'var(--vermelho)':pct>90?'var(--amarelo)':'var(--verde)';
+    const progHTML = f.kmPesada!=='' && f.kmPesada!==null && f.kmPesada!==undefined
+      ? `<div class="prog-wrap"><div class="prog-pct">${Math.round(f.pctKM*100)}%</div><div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${progColor}"></div></div></div>`
+      : `<span style="color:var(--text3);font-size:12px;">sem KM</span>`;
+
+    const statusMap = {
+      vencida: ['s-vencida','❌ Vencida'],
+      urgente: ['s-urgente','🔴 <30 dias'],
+      alerta:  ['s-alerta', '🟡 <90 dias'],
+      emdia:   ['s-emdia',  '✅ Em Dia'],
+      semdata: ['s-semdata','— Sem data'],
+    };
+    const [sc, st] = statusMap[f.status]||['s-semdata','—'];
+    const statusBadge = `<span class="status-badge ${sc}">${st}</span>`;
+
+    const bauMap = {
+      ok:       ['bau-ok','✅ OK'],
+      vazio:    ['bau-vazio','⚠️ Vazio'],
+      problema: ['bau-problema','❌ Problema'],
+      'n/a':    ['bau-na','—'],
+    };
+    const [bc, bt] = bauMap[f.bau||'n/a']||['bau-na','—'];
+    const bauBadge = `<span class="bau-badge ${bc}">${bt}</span>`;
+
+    const tipoMap = {
+      vagao:       ['tipo-pesada','VAGÃO'],
+      bitrem:      ['tipo-leve','BITREM'],
+      semireboque: ['tipo-pesada','SEMI'],
+      outro:       ['tipo-corretiva','OUTRO'],
+    };
+    const [tc, tt] = tipoMap[f.tipo||'outro']||['tipo-corretiva','—'];
+    const tipoBadge = `<span class="tipo-badge ${tc}">${tt}</span>`;
+
+    const manutMap = {
+      'preventiva-pesada': '🔴 Prev. Pesada',
+      'preventiva-leve':   '🟡 Prev. Leve',
+      'corretiva':         '🔧 Corretiva',
+      '':                  '—',
+    };
+    const manutTxt = manutMap[f.manut||'']||'—';
+
+    const obsText = [f.obs, f.problemas].filter(Boolean).join(' · ') || '—';
+    const obsHtml = `<span style="font-size:12px;color:var(--text2);max-width:200px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${obsText.replace(/"/g,'&quot;')}">${obsText}</span>`;
+
+    const uid = f.uid;
+
+    return `<tr>
+      <td><span class="frota-code">${esc(f.frota||'—')}</span></td>
+      <td>${esc(f.modelo||'—')}</td>
+      <td>${tipoBadge}</td>
+      <td><span style="font-family:'Space Mono',monospace">${f.km ? Number(f.km).toLocaleString('pt-BR') : '—'}</span></td>
+      <td>${progHTML}</td>
+      <td style="font-size:12px;color:var(--text2)">${f.ultPesada ? fmtDate(f.ultPesada) : '—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${f.ultLeve  ? fmtDate(f.ultLeve)  : '—'}</td>
+      <td>${statusBadge}</td>
+      <td><span style="font-family:'Space Mono',monospace;${f.diasBolsao>=10?'color:var(--amarelo)':''}">${f.diasBolsao}</span></td>
+      <td>${bauBadge}</td>
+      <td style="font-size:12px">${manutTxt}</td>
+      <td>${obsHtml}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-sm btn-edit" onclick="openEdit('${uid}')">✏️</button>
+          <button class="btn-sm btn-del"  onclick="delVehicle('${uid}')">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d){ if(!d) return '—'; const [y,m,dy]=d.split('-'); return `${dy}/${m}/${y}`; }
+
+// ===== FILTER / SORT =====
+window.setFilter = function(f, btn){
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+window.sortBy = function(field){
+  if(sortField===field) sortAsc=!sortAsc;
+  else { sortField=field; sortAsc=true; }
+  render();
+}
+
+// ===== MODAL =====
+window.openModal = function(){
+  editingId = null;
+  document.getElementById('modal-title').textContent = '➕ Adicionar Veículo';
+  ['frota','modelo','km','obs','problemas'].forEach(id => document.getElementById('f-'+id).value='');
+  ['tipo','manut','bau'].forEach(id => document.getElementById('f-'+id).selectedIndex=0);
+  ['chegada','ult-pesada','ult-leve'].forEach(id => document.getElementById('f-'+id).value='');
+  document.getElementById('f-km-pesada').value='';
+  document.getElementById('f-km-leve').value='';
+  document.getElementById('f-dias').value='';
+  document.getElementById('modal').classList.add('open');
+}
+
+window.openEdit = function(uid){
+  const f = frotas.find(x=>x.uid===uid);
+  if(!f) return;
+  editingId = uid;
+  document.getElementById('modal-title').textContent = '✏️ Editar Veículo';
+  document.getElementById('f-frota').value    = f.frota||'';
+  document.getElementById('f-modelo').value   = f.modelo||'';
+  document.getElementById('f-tipo').value     = f.tipo||'outro';
+  document.getElementById('f-chegada').value  = f.chegada||'';
+  document.getElementById('f-km').value       = f.km||'';
+  document.getElementById('f-manut').value    = f.manut||'';
+  document.getElementById('f-ult-pesada').value = f.ultPesada||'';
+  document.getElementById('f-km-pesada').value  = f.kmPesada!==undefined&&f.kmPesada!==null ? f.kmPesada : '';
+  document.getElementById('f-ult-leve').value   = f.ultLeve||'';
+  document.getElementById('f-km-leve').value    = f.kmLeve!==undefined&&f.kmLeve!==null ? f.kmLeve : '';
+  document.getElementById('f-bau').value      = f.bau||'n/a';
+  document.getElementById('f-dias').value     = f.dias||'';
+  document.getElementById('f-obs').value      = f.obs||'';
+  document.getElementById('f-problemas').value= f.problemas||'';
+  document.getElementById('modal').classList.add('open');
+}
+
+window.closeModal = function(){
+  document.getElementById('modal').classList.remove('open');
+  editingId = null;
+}
+window.closeModalOverlay = function(e){ if(e.target===document.getElementById('modal')) closeModal(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeModal(); } });
+
+window.saveVehicle = async function(){
+  const frota = document.getElementById('f-frota').value.trim();
+  if(!frota){ showToast('warn','⚠️','Código da frota é obrigatório!'); return; }
+
+  const data = {
+    uid:       editingId || (Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
+    frota,
+    modelo:    document.getElementById('f-modelo').value.trim(),
+    tipo:      document.getElementById('f-tipo').value,
+    chegada:   document.getElementById('f-chegada').value,
+    km:        document.getElementById('f-km').value,
+    manut:     document.getElementById('f-manut').value,
+    ultPesada: document.getElementById('f-ult-pesada').value,
+    kmPesada:  document.getElementById('f-km-pesada').value,
+    ultLeve:   document.getElementById('f-ult-leve').value,
+    kmLeve:    document.getElementById('f-km-leve').value,
+    bau:       document.getElementById('f-bau').value,
+    dias:      document.getElementById('f-dias').value,
+    obs:       document.getElementById('f-obs').value.trim(),
+    problemas: document.getElementById('f-problemas').value.trim(),
+  };
+
+  const ok = await saveToFirebase(data);
+  if(ok){
+    showToast('ok','✅', editingId ? 'Veículo atualizado!' : `Frota ${frota} adicionada!`);
+    closeModal();
+  }
+}
+
+window.delVehicle = async function(uid){
+  const f = frotas.find(x=>x.uid===uid);
+  if(!confirm(`Remover frota ${f?.frota||uid}?`)) return;
+  const ok = await deleteFromFirebase(uid);
+  if(ok) showToast('ok','🗑️','Veículo removido.');
+}
+
+// ===== EXPORT CSV =====
+window.exportCSV = function(){
+  if(!frotas.length){ showToast('warn','⚠️','Nenhum dado pra exportar!'); return; }
+  const cols = ['frota','modelo','tipo','chegada','km','manut','ultPesada','kmPesada','ultLeve','kmLeve','bau','obs','problemas'];
+  const header = ['FROTA','MODELO','TIPO','CHEGADA PATIO','KM ATUAL','MANUTENÇÃO','ULTIMA PESADA','KM PESADA','ULTIMA LEVE','KM LEVE','BAU','OBSERVAÇÃO','PROBLEMAS'];
+  const rows = frotas.map(f => cols.map(c => `"${(f[c]||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download = `frota_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('ok','📥','CSV exportado!');
+}
+
+// ===== IMPORT CSV =====
+window.importarCSV = function(){ document.getElementById('csv-input').click(); }
+window.handleCSV = async function(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = async ev => {
+    try {
+      const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const header = lines[0].split(sep).map(h=>h.replace(/"/g,'').trim().toUpperCase());
+      const colIdx = {};
+      ['FROTA','MODELO','TIPO','CHEGADA PATIO','KM ATUAL','MANUTENÇÃO','ULTIMA PESADA','KM PESADA','ULTIMA LEVE','KM LEVE','BAU','OBSERVAÇÃO','PROBLEMAS']
+        .forEach(c => colIdx[c] = header.indexOf(c));
+
+      const g = (row, col) => (row[colIdx[col]]||'').replace(/^"|"$/g,'').trim();
+
+      const toSave = [];
+      let added = 0;
+      for(let i=1;i<lines.length;i++){
+        const row = lines[i].split(sep);
+        const frotaCode = g(row,'FROTA'); if(!frotaCode) continue;
+        const existing = frotas.find(f=>f.frota===frotaCode);
+        const data = {
+          uid:       existing?.uid || (Date.now().toString(36)+Math.random().toString(36).slice(2,5)+i),
+          frota:     frotaCode,
+          modelo:    g(row,'MODELO'),
+          tipo:      g(row,'TIPO')||'outro',
+          chegada:   g(row,'CHEGADA PATIO'),
+          km:        g(row,'KM ATUAL').replace(/[.,\s]/g,'').replace(/(\d+)(\d{3})$/,'$1$2')||'',
+          manut:     g(row,'MANUTENÇÃO'),
+          ultPesada: g(row,'ULTIMA PESADA'),
+          kmPesada:  g(row,'KM PESADA'),
+          ultLeve:   g(row,'ULTIMA LEVE'),
+          kmLeve:    g(row,'KM LEVE'),
+          bau:       g(row,'BAU')||'n/a',
+          obs:       g(row,'OBSERVAÇÃO'),
+          problemas: g(row,'PROBLEMAS'),
+        };
+        if(!existing) added++;
+        toSave.push(data);
+      }
+
+      const ok = await batchSaveToFirebase(toSave);
+      if(ok) showToast('ok','📂',`CSV importado! ${added} novo(s) adicionado(s).`);
+    } catch(err){ showToast('err','❌','Erro ao importar: '+err.message); }
+  };
+  r.readAsText(file, 'UTF-8');
+  e.target.value='';
+}
+
+// ===== TOAST =====
+window.showToast = function(type, icon, msg, dur=4000){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span style="font-size:1.1rem">${icon}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>{el.style.animation='slide-out .3s ease forwards';setTimeout(()=>el.remove(),300);},dur);
+}
+
+// ===== INIT =====
+const config = HARDCODED_CONFIG || getStoredConfig();
+if(config){
+  initFirebase(config);
+} else {
+  document.getElementById('loading-overlay').classList.add('hidden');
+  setSyncStatus('error', 'Não configurado');
+  openConfigModal();
+}
+
+render();
+</script>
+</body>
+</html>
