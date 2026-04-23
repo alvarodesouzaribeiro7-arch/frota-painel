@@ -588,10 +588,9 @@ window.render = function(){
     const statusBadge = `<span class="status-badge ${sc}">${st}</span>`;
 
     const bauMap = {
-      ok:       ['bau-ok','✅ OK'],
-      vazio:    ['bau-vazio','⚠️ Vazio'],
-      problema: ['bau-problema','❌ Problema'],
-      'n/a':    ['bau-na','—'],
+      ok:       ['bau-carregado','⚠️ Carregado'],
+      vazio:    ['bau-vazio','✅ Vazio'],
+     'n/a':    ['bau-na','—'],
     };
     const [bc, bt] = bauMap[f.bau||'n/a']||['bau-na','—'];
     const bauBadge = `<span class="bau-badge ${bc}">${bt}</span>`;
