@@ -5,6 +5,122 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fleet Dynamics — Tragetta | Operational Intelligence</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBCVjH...",
+  authDomain: "tragetta-5c119.firebaseapp.com",
+  projectId: "tragetta-5c119",
+  storageBucket: "tragetta-5c119.firebasestorage.app",
+  messagingSenderId: "892426675968",
+  appId: "1:892426675968:web:777a02ce64b280264135e5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── Salva os dados no Firestore após parsear o CSV
+window.saveToFirestore = async function(frotas) {
+  try {
+    const payload = frotas.map(f => ({
+      frota:      f.frota,
+      tipo:       f.tipo,
+      km:         f.km ?? null,
+      ciclo:      f.ciclo ?? null,
+      ultPesada:  f.ultPesada,
+      ultLeve:    f.ultLeve,
+      status:     f.status,
+      urgente:    f.urgente,
+      bloqueio:   f.bloqueio,
+      diasParado: f.diasParado ?? null,
+      slaVencido: f.slaVencido,
+      prevAlerta: f.prevAlerta ?? null,
+      proxVenc:   f.proxVenc ? {
+        tipo:        f.proxVenc.tipo,
+        txt:         f.proxVenc.txt,
+        vencida:     f.proxVenc.vencida,
+        alertStatus: f.proxVenc.alertStatus,
+        diasLeft:    f.proxVenc.diasLeft ?? null,
+        venceDate:   f.proxVenc.venceDate ? f.proxVenc.venceDate.toISOString() : null
+      } : null
+    }));
+    await setDoc(doc(db, 'painel', 'bolsao'), {
+      frotas:    payload,
+      updatedAt: new Date().toISOString(),
+      total:     payload.length
+    });
+    console.log('✅ Dados salvos no Firestore');
+    showFirestoreStatus('saved');
+  } catch(e) {
+    console.error('Erro ao salvar no Firestore:', e);
+    showFirestoreStatus('error');
+  }
+};
+
+// ── Carrega dados do Firestore ao abrir a página
+async function loadFromFirestore() {
+  try {
+    showFirestoreStatus('loading');
+    const snap = await getDoc(doc(db, 'painel', 'bolsao'));
+    if (!snap.exists()) { showFirestoreStatus('empty'); return; }
+    const data = snap.data();
+    const frotas = deserializeFrotas(data.frotas);
+    if (frotas.length === 0) { showFirestoreStatus('empty'); return; }
+    window.allFrotas = frotas;
+    const ts = data.updatedAt ? new Date(data.updatedAt) : null;
+    const tsLabel = ts ? ts.toLocaleString('pt-BR') : '—';
+    showFirestoreStatus('loaded', `☁️ ${frotas.length} frotas — atualizado em ${tsLabel}`);
+    if (window.renderAll) window.renderAll();
+  } catch(e) {
+    console.error('Erro ao carregar do Firestore:', e);
+    showFirestoreStatus('error');
+  }
+}
+
+// ── Escuta atualizações em tempo real (qualquer aba que salvar, todas atualizam)
+onSnapshot(doc(db, 'painel', 'bolsao'), (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const frotas = deserializeFrotas(data.frotas);
+  if (frotas.length === 0) return;
+  // Só atualiza se vier de outra origem (evita loop no mesmo upload)
+  if (window._suppressSnapshot) return;
+  window.allFrotas = frotas;
+  const ts = data.updatedAt ? new Date(data.updatedAt) : null;
+  const tsLabel = ts ? ts.toLocaleString('pt-BR') : '—';
+  showFirestoreStatus('loaded', `☁️ ${frotas.length} frotas — atualizado em ${tsLabel}`);
+  if (window.renderAll) window.renderAll();
+});
+
+function deserializeFrotas(raw) {
+  return (raw || []).map(f => ({
+    ...f,
+    proxVenc: f.proxVenc ? {
+      ...f.proxVenc,
+      venceDate: f.proxVenc.venceDate ? new Date(f.proxVenc.venceDate) : null
+    } : null
+  }));
+}
+
+function showFirestoreStatus(state, msg) {
+  const el = document.getElementById('firestoreStatus');
+  if (!el) return;
+  const msgs = {
+    loading: '☁️ Carregando dados salvos...',
+    empty:   '☁️ Nenhum dado salvo ainda — importe um CSV',
+    saved:   '✅ Dados salvos na nuvem',
+    error:   '⚠️ Erro ao conectar com a nuvem',
+  };
+  el.textContent = msg || msgs[state] || '';
+  el.className = 'fs-status ' + state;
+}
+
+// Inicia carregamento ao abrir
+window.addEventListener('DOMContentLoaded', loadFromFirestore);
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1009,6 +1125,23 @@
   /* ── HIDDEN ── */
   .hidden { display: none; }
 
+  /* ── FIRESTORE STATUS ── */
+  .fs-status {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    transition: all .3s;
+    white-space: nowrap;
+  }
+  .fs-status.loaded  { background: rgba(39,201,63,.10); border-color: rgba(39,201,63,.35); color: #27C93F; }
+  .fs-status.saved   { background: rgba(39,201,63,.10); border-color: rgba(39,201,63,.35); color: #27C93F; }
+  .fs-status.error   { background: var(--vermelho-dim); border-color: var(--vermelho-border); color: var(--vermelho); }
+  .fs-status.loading { animation: pulse-border 1.5s ease-in-out infinite; }
+
   /* ── FOOTER ── */
   .footer {
     margin-top: 32px;
@@ -1142,6 +1275,7 @@
     </div>
   </div>
   <div class="header-right">
+    <div class="fs-status loading" id="firestoreStatus">☁️ Conectando...</div>
     <div class="badge-date" id="currentDate"></div>
     <button class="btn-theme" id="btnTheme" onclick="toggleTheme()">🌙 Escuro</button>
   </div>
@@ -1343,6 +1477,11 @@
 // KM: " 52,894.00 " (americano) ou " 42.850,00 " (brasileiro)
 // ════════════════════════════════════════════════════════
 let allFrotas = [], currentFilter = 'all';
+// Expõe para o módulo Firebase
+Object.defineProperty(window, 'allFrotas', {
+  get() { return allFrotas; },
+  set(v) { allFrotas = v; }
+});
 
 // ── DRAG & DROP
 const dz = document.getElementById('dropZone');
@@ -1645,6 +1784,14 @@ function parseBolsao(raw) {
 
   allFrotas = frotas;
 
+  // ── Persiste no Firestore
+  window._suppressSnapshot = true;
+  if (window.saveToFirestore) {
+    window.saveToFirestore(frotas).finally(() => {
+      setTimeout(() => { window._suppressSnapshot = false; }, 3000);
+    });
+  }
+
   // ── Mostra data de referência do CSV
   const cd = csvDate;
   const cdLabel = String(cd.getDate()).padStart(2,'0')+'/'+String(cd.getMonth()+1).padStart(2,'0')+'/'+cd.getFullYear();
@@ -1664,6 +1811,7 @@ function setStatus(type, msg) {
 
 // ── ATUALIZA UI COMPLETA
 function renderAll() {
+  window.renderAll = renderAll; // garante exposição após definição
   const f = allFrotas;
   const vencidas  = f.filter(x => x.status === 'vencida');
   const antecipar = f.filter(x => x.status === 'antecipar');
